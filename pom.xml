@@ -11,7 +11,7 @@
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<hadoop.version>2.4.0.2.1.1.0-385</hadoop.version>
-		<storm.version>0.9.1.2.1.1.0-385</storm.version>
+		<!-- <storm.version>0.9.1.2.1.1.0-385</storm.version> -->
 		<storm.kafka.version>0.9.1.2.1.1.0-385</storm.kafka.version>
 		<storm.hdfs.version>0.9.1.2.1.2.0-402</storm.hdfs.version>
 		<hbase.version>0.98.0.2.1.1.0-385-hadoop2</hbase.version>
@@ -40,18 +40,8 @@
     <dependency>
       <groupId>org.apache.storm</groupId>
       <artifactId>storm-core</artifactId>
-      <version>${storm.version}</version>
+      <version>0.9.1</version>
       <scope>provided</scope>
-      <exclusions>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>log4j-over-slf4j</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>slf4j-log4j12</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
         		
 		<!-- Storm Kafka Dependencies -->
@@ -59,24 +49,14 @@
 			<groupId>org.apache.storm</groupId>
 			<artifactId>storm-kafka</artifactId>
 			<version>${storm.kafka.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>log4j-over-slf4j</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>slf4j-log4j12</artifactId>
-        </exclusion>
-      </exclusions>
 		</dependency>
 		
-		<!-- Storm HDFS Dependencies
+		<!-- Storm HDFS Dependencies -->
 		<dependency>
 			<groupId>org.apache.storm</groupId>
 			<artifactId>storm-hdfs</artifactId>
 			<version>${storm.hdfs.version}</version>
-		</dependency> -->
+		</dependency>
 		
 		<!-- Hadoop Dependencies
 		<dependency>

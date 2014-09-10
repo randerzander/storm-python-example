@@ -39,7 +39,7 @@ def readMsg():
         if line[0:-1] == "end":
             break
         msg = msg + line
-    log('Decoding msg: ' + ''.join(msg) + '\n')
+    #sys.stderr.write(msg[:])
     return json_decode(msg[0:-1])
 
 MODE = None

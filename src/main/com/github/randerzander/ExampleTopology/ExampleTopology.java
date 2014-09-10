@@ -1,58 +1,57 @@
 package com.github.randerzander;
 
 import backtype.storm.Config;
-import backtype.storm.LocalCluster;
 import backtype.storm.StormSubmitter;
 import backtype.storm.task.ShellBolt;
-import backtype.storm.task.TopologyContext;
-import backtype.storm.topology.BasicOutputCollector;
 import backtype.storm.topology.IRichBolt;
 import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.topology.TopologyBuilder;
-import backtype.storm.topology.base.BaseBasicBolt;
 import backtype.storm.tuple.Fields;
-import backtype.storm.tuple.Tuple;
-import backtype.storm.tuple.Values;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import backtype.storm.spout.SchemeAsMultiScheme;
 
-import storm.kafka.BrokerHosts;
 import storm.kafka.KafkaSpout;
 import storm.kafka.SpoutConfig;
 import storm.kafka.ZkHosts;
 import storm.kafka.StringScheme;
-import backtype.storm.spout.SchemeAsMultiScheme;
 
-import storm.starter.spout.RandomSentenceSpout;
+import org.apache.storm.hdfs.bolt.HdfsBolt;
+import org.apache.storm.hdfs.bolt.sync.CountSyncPolicy;
+import org.apache.storm.hdfs.bolt.format.DelimitedRecordFormat;
+import org.apache.storm.hdfs.bolt.format.DefaultFileNameFormat;
+
+import java.util.Map;
+import java.util.UUID;
 
 public class ExampleTopology {
-    public static class PyBolt extends ShellBolt implements IRichBolt {
-      public PyBolt() { super("python", "example.py"); }
+  public static class PyBolt extends ShellBolt implements IRichBolt {
+    public PyBolt() { super("python", "example.py"); }
 
-      @Override
-      public void declareOutputFields(OutputFieldsDeclarer declarer) { declarer.declare(new Fields("word")); }
+    @Override
+    public void declareOutputFields(OutputFieldsDeclarer declarer) { declarer.declare(new Fields("word")); }
 
-      @Override
-      public Map<String, Object> getComponentConfiguration() { return null; }
-    }
+    @Override
+    public Map<String, Object> getComponentConfiguration() { return null; }
+  }
     
-    public static void main(String[] args) throws Exception {
-      TopologyBuilder builder = new TopologyBuilder();
+  public static void main(String[] args) throws Exception {
+    //configure spout input
+    SpoutConfig spoutConfig = new SpoutConfig(new ZkHosts("n0.dev:2181"), args[0], "/kafkastorm", UUID.randomUUID().toString());
+    spoutConfig.scheme = new SchemeAsMultiScheme(new StringScheme());
+    KafkaSpout spout = new KafkaSpout(spoutConfig);
+    
+    //configure HDFS output
+    HdfsBolt hdfsBolt = new HdfsBolt().withFsUrl("hdfs://n0.dev:8020")
+      .withFileNameFormat(new DefaultFileNameFormat().withPath("/user/dev/storm-staging").withPrefix("prefix"))
+      .withRecordFormat(new DelimitedRecordFormat().withFieldDelimiter("\t"))
+      .withSyncPolicy(new CountSyncPolicy(5)); //synch buffer with HDFS every 5 tuples
 
-      //configure spout input
-      SpoutConfig spoutConfig = new SpoutConfig(new ZkHosts("n0.dev:2181"), args[0], "/kafkastorm", UUID.randomUUID().toString());
-      spoutConfig.scheme = new SchemeAsMultiScheme(new StringScheme());
-      KafkaSpout spout = new KafkaSpout(spoutConfig);
-      builder.setSpout("spout", spout);
-      //builder.setSpout("spout", new RandomSentenceSpout());
-
-      //configure processors
-      builder.setBolt("bolt", new PyBolt()).shuffleGrouping("spout"); //consumes directly from spout
-      Config conf = new Config();
-      conf.setNumWorkers(1);
-
-      //launch topology
-      StormSubmitter.submitTopology("topology", conf, builder.createTopology());
-    }
+    //build & launch topology
+    TopologyBuilder builder = new TopologyBuilder();
+    builder.setSpout("kafka-spout", spout);
+    builder.setBolt("py-bolt", new PyBolt()).shuffleGrouping("kafka-spout");
+    builder.setBolt("hdfs-bolt", hdfsBolt).shuffleGrouping("py-bolt");
+    Config conf = new Config();
+    conf.setNumWorkers(1);
+    StormSubmitter.submitTopology("topology", conf, builder.createTopology());
+  }
 }
