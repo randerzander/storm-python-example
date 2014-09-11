@@ -1,12 +1,7 @@
-#Dependencies:
-yum groupinstall -y 'Development Tools'
-yum install -y python-devel
+Make sure the storm user has permissions to write to your target HDFS directory
+```
+cd storm-python-example
+mvn package
 
-#Download and install virtualenv
-wget https://bootstrap.pypa.io/ez_setup.py
-sudo python ez_setup.py
-sudo easy_install pip
-sudo pip install virtualenv
-
-#Create a relocatable Python virtualenv
-virtualenv pyenv
+storm jar target/storm-python-example-1.0-SNAPSHOT.jar com.github.randerzander.ExampleTopology kafkaTopicName
+```

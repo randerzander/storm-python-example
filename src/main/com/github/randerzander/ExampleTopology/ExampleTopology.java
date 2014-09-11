@@ -18,6 +18,9 @@ import org.apache.storm.hdfs.bolt.HdfsBolt;
 import org.apache.storm.hdfs.bolt.sync.CountSyncPolicy;
 import org.apache.storm.hdfs.bolt.format.DelimitedRecordFormat;
 import org.apache.storm.hdfs.bolt.format.DefaultFileNameFormat;
+import org.apache.storm.hdfs.bolt.rotation.FileRotationPolicy;
+import org.apache.storm.hdfs.bolt.rotation.FileSizeRotationPolicy;
+import org.apache.storm.hdfs.bolt.rotation.FileSizeRotationPolicy.Units;
 
 import java.util.Map;
 import java.util.UUID;
@@ -41,8 +44,9 @@ public class ExampleTopology {
     
     //configure HDFS output
     HdfsBolt hdfsBolt = new HdfsBolt().withFsUrl("hdfs://n0.dev:8020")
-      .withFileNameFormat(new DefaultFileNameFormat().withPath("/user/dev/storm-staging").withPrefix("prefix"))
+      .withFileNameFormat(new DefaultFileNameFormat().withPath("/user/dev/storm-staging"))
       .withRecordFormat(new DelimitedRecordFormat().withFieldDelimiter("\t"))
+      .withRotationPolicy(new FileSizeRotationPolicy(5.0f, Units.MB))
       .withSyncPolicy(new CountSyncPolicy(5)); //synch buffer with HDFS every 5 tuples
 
     //build & launch topology
