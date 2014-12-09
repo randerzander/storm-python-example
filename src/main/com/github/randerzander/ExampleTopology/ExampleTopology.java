@@ -66,7 +66,7 @@ public class ExampleTopology {
         .withColumnFields(new Fields(fields))
         .withColumnFamily(props.getProperty(prefix+"cf"));
       HBaseBolt bolt = new HBaseBolt(props.getProperty(prefix+"table"), mapper)
-        .withConfigKey("topology.properties");
+        .withConfigKey("hbase.properties");
       declarer = builder.setBolt(boltName, bolt);
     }else{
       System.err.println("Invalid bolt type: " + prefix + ": " + type);
@@ -81,12 +81,16 @@ public class ExampleTopology {
 
     TopologyBuilder builder = new TopologyBuilder();
     //Spouts and bolts are defined as comma separated entried in topology.properties as topology.spouts and topology.bolts
-    for(String spoutName: ((String)props.get("topology.spouts")).split(",")){ setSpout(props, spoutName, builder); }
+    for(String spoutName: ((String)props.get("topology.spouts")).split(",")){
+      System.out.println("Setting up " + spoutName + " spout");
+      setSpout(props, spoutName, builder);
+    }
     for(String boltName: ((String)props.get("topology.bolts")).split(",")){
       String prefix = "topology.bolts."+boltName+".";
       String grouping = props.getProperty(prefix+"grouping");
       String source = props.getProperty(prefix+"source");
       if (grouping.equals("shuffle")){
+        System.out.println("Setting up " + boltName + " bolt");
         getDeclarer(props, boltName, builder).shuffleGrouping(source);
       }else if (grouping.equals("fields")){
         System.err.println("Fields or other groupings not yet supported.");
