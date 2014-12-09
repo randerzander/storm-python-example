@@ -1,13 +1,13 @@
 package com.github.randerzander;
 
+import com.github.randerzander.bolts.PyBolt;
+
 import backtype.storm.Config;
 import backtype.storm.StormSubmitter;
-import backtype.storm.task.ShellBolt;
-import backtype.storm.topology.IRichBolt;
-import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.topology.TopologyBuilder;
 import backtype.storm.tuple.Fields;
 import backtype.storm.spout.SchemeAsMultiScheme;
+import backtype.storm.topology.BoltDeclarer;
 
 import storm.kafka.KafkaSpout;
 import storm.kafka.SpoutConfig;
@@ -22,40 +22,80 @@ import org.apache.storm.hdfs.bolt.rotation.FileRotationPolicy;
 import org.apache.storm.hdfs.bolt.rotation.FileSizeRotationPolicy;
 import org.apache.storm.hdfs.bolt.rotation.FileSizeRotationPolicy.Units;
 
-import java.util.Map;
+import org.apache.storm.hbase.bolt.mapper.SimpleHBaseMapper;
+import org.apache.storm.hbase.bolt.HBaseBolt;
+
+import java.io.FileReader;
+import java.util.Properties;
+import java.util.Enumeration;
 import java.util.UUID;
 
 public class ExampleTopology {
-  public static class PyBolt extends ShellBolt implements IRichBolt {
-    public PyBolt() { super("python", "example.py"); }
-
-    @Override
-    public void declareOutputFields(OutputFieldsDeclarer declarer) { declarer.declare(new Fields("word")); }
-
-    @Override
-    public Map<String, Object> getComponentConfiguration() { return null; }
-  }
-    
-  public static void main(String[] args) throws Exception {
-    //configure spout input
-    SpoutConfig spoutConfig = new SpoutConfig(new ZkHosts("n0.dev:2181"), args[0], "/kafkastorm", UUID.randomUUID().toString());
+  public static void setSpout(Properties props, String spoutName, TopologyBuilder builder){
+    String prefix = "topology.spouts." + spoutName + ".";
+    SpoutConfig spoutConfig = new SpoutConfig(
+      new ZkHosts(props.getProperty(prefix+"zk.host")),
+      props.getProperty(prefix+"topic"),
+      props.getProperty(prefix+"zk.root"),
+      UUID.randomUUID().toString()
+    );
     spoutConfig.scheme = new SchemeAsMultiScheme(new StringScheme());
-    KafkaSpout spout = new KafkaSpout(spoutConfig);
-    
-    //configure HDFS output
-    HdfsBolt hdfsBolt = new HdfsBolt().withFsUrl("hdfs://n0.dev:8020")
-      .withFileNameFormat(new DefaultFileNameFormat().withPath("/user/dev/storm-staging"))
-      .withRecordFormat(new DelimitedRecordFormat().withFieldDelimiter("\t"))
-      .withRotationPolicy(new FileSizeRotationPolicy(5.0f, Units.MB))
-      .withSyncPolicy(new CountSyncPolicy(5)); //synch buffer with HDFS every 5 tuples
+    spoutConfig.forceFromStart = props.getProperty(prefix+"forceFromStart").equals("true");
+    builder.setSpout(spoutName, new KafkaSpout(spoutConfig));
+  }
 
-    //build & launch topology
+  public static BoltDeclarer getDeclarer(Properties props, String boltName, TopologyBuilder builder){
+    String prefix = "topology.bolts." + boltName + ".";
+    String type = props.getProperty(prefix+"type");
+    BoltDeclarer declarer = null;
+    //TODO parallelism
+    //int parallelism = Integer.parseInt(props.getProperty(prefix+"parallelism"));
+
+    if (type.equals("HDFSBolt")){
+      HdfsBolt bolt = new HdfsBolt().withFsUrl(props.getProperty(prefix+"withFsUrl"))
+        .withFileNameFormat(new DefaultFileNameFormat().withPath(props.getProperty(prefix+"outputDir")))
+        .withRecordFormat(new DelimitedRecordFormat().withFieldDelimiter("\t"))
+        .withRotationPolicy(new FileSizeRotationPolicy(256, Units.MB))
+        .withSyncPolicy(new CountSyncPolicy(Integer.parseInt(props.getProperty(prefix+"countSyncPolicy"))));
+      declarer = builder.setBolt(boltName, bolt);
+    }else if (type.equals("PyBolt")){
+      declarer = builder.setBolt(boltName, new PyBolt(boltName + ".py", ((String)props.getProperty(prefix+"fields")).split(",")));
+    }else if (type.equals("HBaseBolt")){
+      String[] fields = ((String)props.getProperty(prefix+"fields")).split(",");
+      SimpleHBaseMapper mapper = new SimpleHBaseMapper().withRowKeyField(props.getProperty(prefix+"rowKeyField"))
+        .withColumnFields(new Fields(fields))
+        .withColumnFamily(props.getProperty(prefix+"cf"));
+      HBaseBolt bolt = new HBaseBolt(props.getProperty(prefix+"table"), mapper)
+        .withConfigKey("topology.properties");
+      declarer = builder.setBolt(boltName, bolt);
+    }else{
+      System.err.println("Invalid bolt type: " + prefix + ": " + type);
+      System.exit(-1);
+    }
+    return declarer;
+  }
+
+  public static void main(String[] args) throws Exception {
+    Properties props = new Properties();
+    props.load(new FileReader(args[0]));
+
     TopologyBuilder builder = new TopologyBuilder();
-    builder.setSpout("kafka-spout", spout);
-    builder.setBolt("py-bolt", new PyBolt()).shuffleGrouping("kafka-spout");
-    builder.setBolt("hdfs-bolt", hdfsBolt).shuffleGrouping("py-bolt");
+    //Spouts and bolts are defined as comma separated entried in topology.properties as topology.spouts and topology.bolts
+    for(String spoutName: ((String)props.get("topology.spouts")).split(",")){ setSpout(props, spoutName, builder); }
+    for(String boltName: ((String)props.get("topology.bolts")).split(",")){
+      String prefix = "topology.bolts."+boltName+".";
+      String grouping = props.getProperty(prefix+"grouping");
+      String source = props.getProperty(prefix+"source");
+      if (grouping.equals("shuffle")){
+        getDeclarer(props, boltName, builder).shuffleGrouping(source);
+      }else if (grouping.equals("fields")){
+        System.err.println("Fields or other groupings not yet supported.");
+        System.exit(-1);
+      }
+    }
+
     Config conf = new Config();
-    conf.setNumWorkers(1);
-    StormSubmitter.submitTopology("topology", conf, builder.createTopology());
+    conf.setNumWorkers(Integer.parseInt(props.getProperty("topology.numWorkers")));
+    StormSubmitter.submitTopology(props.getProperty("topology.name"), conf, builder.createTopology());
   }
 }
