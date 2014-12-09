@@ -33,15 +33,15 @@ public class PhoenixBolt implements IRichBolt {
     fields = _fields;
   }
 
-	@Override
-	public void prepare(Map stormConf, TopologyContext context, OutputCollector _collector) {
-		collector = _collector;
+  @Override
+  public void prepare(Map stormConf, TopologyContext context, OutputCollector _collector){
+    collector = _collector;
     try{
       URLClassLoader loader = new URLClassLoader(new URL[]{new URL(jdbcJar)}, null);
       Driver driver = (Driver) loader.loadClass("org.apache.phoenix.jdbc.PhoenixDriver").newInstance();
       Connection connection = driver.connect(jdbcURL, new Properties());
     }catch(Exception e){ e.printStackTrace(); System.exit(-1); }
-	}
+  }
 
   @Override
   public void execute(Tuple tuple) {
