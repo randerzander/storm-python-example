@@ -43,10 +43,9 @@ public class PhoenixBolt implements IRichBolt {
     }catch(Exception e){ e.printStackTrace(); System.exit(-1); }
 	}
 
-	@Override
-	public void execute(Tuple tuple) {
-		try
-		{
+  @Override
+  public void execute(Tuple tuple) {
+    try{
       String values = "(";
       String statement = "upsert into " + table + "(";
       //Use fields if specified, else use whatever specified by upstream bolt
@@ -57,18 +56,14 @@ public class PhoenixBolt implements IRichBolt {
       }
       statement = statement.substring(0, statement.length() - 1) + ") values (" + values.substring(0, values.length()-1) + ")";
       connection.createStatement().executeQuery(statement);
-		}
-		catch(Exception e){
-			e.printStackTrace();
-			throw new RuntimeException(e);
-		}
-		collector.ack(tuple);
-	}
+    }catch(Exception e){ e.printStachTrace(); throw new RuntimeException(e); }
+    collector.ack(tuple);
+  }
 
-	@Override
-	public void declareOutputFields(OutputFieldsDeclarer declarer) { declarer.declare(new Fields()); }
-	@Override
-	public Map<String, Object> getComponentConfiguration() { return null; }
+  @Override
+  public void declareOutputFields(OutputFieldsDeclarer declarer) { declarer.declare(new Fields()); }
+  @Override
+  public Map<String, Object> getComponentConfiguration() { return null; }
   @Override
   public void cleanup(){}
 }
