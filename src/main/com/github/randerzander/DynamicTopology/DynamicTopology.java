@@ -2,6 +2,7 @@ package com.github.randerzander;
 
 import com.github.randerzander.bolts.PyBolt;
 import com.github.randerzander.bolts.PhoenixBolt;
+import com.github.randerzander.bolts.MongoBolt;
 import com.github.randerzander.utils.DateTimeFileNameFormat;
 
 import backtype.storm.Config;
@@ -38,7 +39,7 @@ import java.util.UUID;
 import java.util.Map;
 import java.util.HashMap;
 
-public class ExampleTopology {
+public class DynamicTopology {
   public static void setSpout(HashMap<String, String> props, String spoutName, TopologyBuilder builder){
     System.out.println("Setting up " + spoutName + " spout");
     String prefix = "spouts." + spoutName + ".";
@@ -58,6 +59,12 @@ public class ExampleTopology {
     String prefix = "bolts." + boltName + ".";
     String type = props.get(prefix+"type");
     BoltDeclarer declarer = null;
+
+    //Use specified fields, else use source bolt's fields
+    String fields = null;
+    if (props.get(prefix+"fields") != null) fields = props.get(prefix+"fields");
+    else fields = props.get("bolts."+props.get(prefix+"source")+".fields");
+
     //TODO parallelism
     //int parallelism = Integer.parseInt(props.get(prefix+"parallelism"));
 
@@ -69,22 +76,17 @@ public class ExampleTopology {
         .withSyncPolicy(new CountSyncPolicy(Integer.parseInt(props.get(prefix+"countSyncPolicy"))));
       declarer = builder.setBolt(boltName, bolt);
     }else if (type.equals("PyBolt")){
-      declarer = builder.setBolt(boltName, new PyBolt(boltName + ".py", ((String)props.get(prefix+"fields")).split(",")));
+      declarer = builder.setBolt(boltName, new PyBolt(boltName + ".py", fields));
+    }else if (type.equals("MongoBolt")){
+      declarer = builder.setBolt(boltName, new MongoBolt(props.get(prefix+"host"), props.get(prefix+"db"), props.get(prefix+"collection"), fields));
     }else if (type.equals("HBaseBolt")){
-      //Use specified fields, else use source bolt's fields
-      String fields = null;
-      if (props.get(prefix+"fields") != null) fields = props.get(prefix+"fields");
-      else fields = props.get("bolts."+props.get(prefix+"source")+".fields");
-
       SimpleHBaseMapper mapper = new SimpleHBaseMapper().withRowKeyField(props.get(prefix+"rowKeyField"))
-        .withColumnFields(new Fields(fields.split(",")))
+        .withColumnFields(new Fields(fields))
         .withColumnFamily(props.get(prefix+"cf"));
       HBaseBolt bolt = new HBaseBolt(props.get(prefix+"table"), mapper);
         //.withConfigKey(props.get(prefix+"configKey")); TODO -- 2.2 upgrade
       declarer = builder.setBolt(boltName, bolt);
     }else if (type.equals("PhoenixBolt")){
-      String[] fields = null;
-      if (props.get(prefix+"fields") != null) fields = props.get(prefix+"fields").split(",");
       declarer = builder.setBolt(boltName, new PhoenixBolt(
         props.get(prefix+"jdbcJar"), props.get(prefix+"jdbcURL"), props.get(prefix+"table"), fields)
       );

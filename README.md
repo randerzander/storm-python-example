@@ -19,5 +19,5 @@ To build manually rebuild the Storm uber jar:
 ```
 mvn package
 
-storm jar target/storm-python-example-1.0-SNAPSHOT.jar com.github.randerzander.ExampleTopology topology.properties
+storm jar target/storm-python-example-1.0-SNAPSHOT.jar com.github.randerzander.DynamicTopology topology.properties
 ```

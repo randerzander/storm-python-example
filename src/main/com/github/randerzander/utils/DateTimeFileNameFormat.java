@@ -14,40 +14,35 @@ public class DateTimeFileNameFormat implements FileNameFormat {
     private String path = "/storm";
     private String prefix = "";
     private String extension = ".txt";
+    private Format format = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
 
     public DateTimeFileNameFormat withPrefix(String prefix){
-        this.prefix = prefix;
-        return this;
+      this.prefix = prefix;
+      return this;
     }
 
     public DateTimeFileNameFormat withExtension(String extension){
-        this.extension = extension;
-        return this;
+      this.extension = extension;
+      return this;
     }
 
     public DateTimeFileNameFormat withPath(String path){
-        this.path = path;
-        return this;
+      this.path = path;
+      return this;
     }
 
     @Override
     public void prepare(Map conf, TopologyContext topologyContext) {
-        this.componentId = topologyContext.getThisComponentId();
-        this.taskId = topologyContext.getThisTaskId();
+      this.componentId = topologyContext.getThisComponentId();
+      this.taskId = topologyContext.getThisTaskId();
     }
 
-    public String convertTime(long time){
-        Date date = new Date(time);
-        Format format = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
-        return format.format(date);
-    }
+    public String convertTime(long time){ return format.format(new Date(time)); }
 
     @Override
     public String getName(long rotation, long timeStamp) {
-        return this.prefix + this.componentId + "-" + this.taskId +  "-" + rotation + "-" + convertTime(timeStamp) + this.extension;
+      return this.prefix + this.componentId + "-" + this.taskId +  "-" + rotation + "-" + convertTime(timeStamp) + this.extension;
     }
 
-    public String getPath(){
-        return this.path;
-    }
+    public String getPath(){ return this.path; {
 }
