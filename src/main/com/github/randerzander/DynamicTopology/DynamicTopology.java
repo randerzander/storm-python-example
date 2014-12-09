@@ -61,9 +61,10 @@ public class DynamicTopology {
     BoltDeclarer declarer = null;
 
     //Use specified fields, else use source bolt's fields
-    String fields = null;
-    if (props.get(prefix+"fields") != null) fields = props.get(prefix+"fields");
-    else fields = props.get("bolts."+props.get(prefix+"source")+".fields");
+    String tmp = null;
+    if (props.get(prefix+"fields") != null) tmp = props.get(prefix+"fields");
+    else tmp = props.get("bolts."+props.get(prefix+"source")+".fields");
+    String[] fields = (tmp != null) ? tmp.split(",") : null;
 
     //TODO parallelism
     //int parallelism = Integer.parseInt(props.get(prefix+"parallelism"));

@@ -25,16 +25,18 @@ public class MongoBolt extends BaseRichBolt{
   private final String collectionName;
   private final String dbName;
   private final String url;
+  private String[] fields;
   private MongoClient client;
   private DB db;
   private DBCollection collection;
 
 	private OutputCollector collector;
 
-  public MongoBolt(String url, String dbName, String collectionName) {
+  public MongoBolt(String url, String dbName, String collectionName, String[] _fields) {
     this.url = url;
     this.dbName = dbName;
     this.collectionName = collectionName;
+    this.fields = _fields;
   }
   
 	public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {

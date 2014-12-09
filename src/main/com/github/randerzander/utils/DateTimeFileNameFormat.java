@@ -44,5 +44,5 @@ public class DateTimeFileNameFormat implements FileNameFormat {
       return this.prefix + this.componentId + "-" + this.taskId +  "-" + rotation + "-" + convertTime(timeStamp) + this.extension;
     }
 
-    public String getPath(){ return this.path; {
+    public String getPath(){ return this.path; }
 }
