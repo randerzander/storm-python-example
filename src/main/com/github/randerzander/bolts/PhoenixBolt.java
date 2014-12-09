@@ -1,5 +1,7 @@
 package com.github.randerzander.bolts;
 
+import java.io.File;
+
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.sql.Connection;
@@ -17,40 +19,43 @@ import backtype.storm.tuple.Tuple;
 
 public class PhoenixBolt implements IRichBolt {
   private String jdbcURL;
-  private String jarFile;
-  private String fqClassName;
+  private String jdbcJar;
   private Connection connection;
+  private String table;
+  private String[] fields;
 	
-	private OutputCollector collector;
+  private OutputCollector collector;
 
-	public PhoenixBolt(String _jdbcURL, String _jarFile, String _fqClassName){
-    jdbcURL = _jdbcURL; jarFile = _jarFile; fqClassName = _fqClassName;
+  public PhoenixBolt(String _jdbcJar, String _jdbcURL, String _table, String[] _fields){
+    jdbcJar = _jdbcJar;
+    jdbcURL = _jdbcURL;
+    table = _table;
+    fields = _fields;
   }
 
 	@Override
 	public void prepare(Map stormConf, TopologyContext context, OutputCollector _collector) {
-    try{
-      URLClassLoader loader = new URLClassLoader(new URL[]{new URL(jarFile)}, null);
-      connection = ((Driver) loader.loadClass(fqClassName).newInstance()).connect(jdbcURL, new Properties());
-    }catch(Exception e){ e.printStackTrace(); System.exit(-1); }
-		
 		collector = _collector;
+    try{
+      URLClassLoader loader = new URLClassLoader(new URL[]{new URL(jdbcJar)}, null);
+      Driver driver = (Driver) loader.loadClass("org.apache.phoenix.jdbc.PhoenixDriver").newInstance();
+      Connection connection = driver.connect(jdbcURL, new Properties());
+    }catch(Exception e){ e.printStackTrace(); System.exit(-1); }
 	}
 
 	@Override
 	public void execute(Tuple tuple) {
 		try
 		{
-      //TODO: build query string dynamically from Field and Value input
-      String statement = "upsert into " + tuple.getStringByField("table") + "(";
       String values = "(";
+      String statement = "upsert into " + table + "(";
+      //Use fields if specified, else use whatever specified by upstream bolt
+      if (fields != null) for(String field: fields) statement += "," + field;
       for (String field : tuple.getFields()){ 
-        if (!field.equals("table")){
-          statement += field + ",";
-          values += tuple.getStringByField(field) + ",";
-        }
+        if (fields != null) statement += field + ",";
+        values += tuple.getStringByField(field) + ",";
       }
-      statement = statement.substring(0, statement.length() - 1) + ") values " + values.substring(0, values.length()-1) + ")";
+      statement = statement.substring(0, statement.length() - 1) + ") values (" + values.substring(0, values.length()-1) + ")";
       connection.createStatement().executeQuery(statement);
 		}
 		catch(Exception e){

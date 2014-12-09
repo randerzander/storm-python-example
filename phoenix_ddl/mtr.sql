@@ -1,9 +1,9 @@
 drop table if exists mtr;
 
 create table mtr(
-  source_ip varchar,
-  target_ip varchar,
-  local_time time,
+  source_ip varchar not null,
+  target_ip varchar not null,
+  local_time time not null,
   loss decimal,
   avg_latency decimal,
   stddev_latency decimal
