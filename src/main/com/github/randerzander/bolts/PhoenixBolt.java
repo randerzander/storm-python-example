@@ -56,7 +56,7 @@ public class PhoenixBolt implements IRichBolt {
       }
       statement = statement.substring(0, statement.length() - 1) + ") values (" + values.substring(0, values.length()-1) + ")";
       connection.createStatement().executeQuery(statement);
-    }catch(Exception e){ e.printStachTrace(); throw new RuntimeException(e); }
+    }catch(Exception e){ e.printStackTrace(); throw new RuntimeException(e); }
     collector.ack(tuple);
   }
 

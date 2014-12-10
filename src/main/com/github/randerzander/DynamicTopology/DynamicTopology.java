@@ -38,6 +38,7 @@ import java.util.Enumeration;
 import java.util.UUID;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Arrays;
 
 public class DynamicTopology {
   public static void setSpout(HashMap<String, String> props, String spoutName, TopologyBuilder builder){
@@ -79,7 +80,9 @@ public class DynamicTopology {
     }else if (type.equals("PyBolt")){
       declarer = builder.setBolt(boltName, new PyBolt(boltName + ".py", fields));
     }else if (type.equals("MongoBolt")){
-      declarer = builder.setBolt(boltName, new MongoBolt(props.get(prefix+"host"), props.get(prefix+"db"), props.get(prefix+"collection"), fields));
+      declarer = builder.setBolt(boltName, new MongoBolt(props.get(prefix+"user"), props.get(prefix+"password"),
+        props.get(prefix+"host"), props.get(prefix+"db"), props.get(prefix+"collection"), fields)
+      );
     }else if (type.equals("HBaseBolt")){
       SimpleHBaseMapper mapper = new SimpleHBaseMapper().withRowKeyField(props.get(prefix+"rowKeyField"))
         .withColumnFields(new Fields(fields))
@@ -112,19 +115,24 @@ public class DynamicTopology {
       else{ System.err.println("Non shufflegroupings not supported."); System.exit(-1);  }
     }
 
+    //Submit topology
+    Config conf = new Config();
+    conf.setNumWorkers(Integer.parseInt(props.get("numWorkers")));
+    String topologyName = props.get("topologyName");
     if (props.get("killAlreadyRunningTopology").equals("true")){
       Client client = NimbusClient.getConfiguredClient(Utils.readStormConfig()).getClient();
       KillOptions opts = new KillOptions();
       int killWait = Integer.parseInt(props.get("killWait"));
       opts.set_wait_secs(killWait);
-      try{ client.killTopologyWithOpts(props.get("topologyName"), opts); Thread.sleep((killWait+5)*1000); }
+      try{ client.killTopologyWithOpts(topologyName, opts); }
       catch(Exception e){}
+      System.out.println(client.getClusterInfo().get_topologies());
+      while (Arrays.asList(client.getClusterInfo().get_topologies()).contains(topologyName)){
+        System.out.println(topologyName + " currently running.. waiting for it to end.");
+        Thread.sleep(1000);
+      }
     }
-
-    //Submit topology
-    Config conf = new Config();
-    conf.setNumWorkers(Integer.parseInt(props.get("numWorkers")));
-    StormSubmitter.submitTopology(props.get("topologyName"), conf, builder.createTopology());
+    StormSubmitter.submitTopology(topologyName, conf, builder.createTopology());
   }
 
   public static HashMap<String, String> getPropertiesMap(String file){

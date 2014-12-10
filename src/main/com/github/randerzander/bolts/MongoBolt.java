@@ -7,6 +7,9 @@ import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
+import com.mongodb.ServerAddress;
+import com.mongodb.MongoCredential;
+import com.mongodb.DBCursor;
 
 import java.net.UnknownHostException;
 import java.util.Map;
@@ -24,40 +27,52 @@ public class MongoBolt extends BaseRichBolt{
   private final String collectionName;
   private final String dbName;
   private final String url;
+  private final String user;
+  private final String password;
   private String[] fields;
-  private String type;
   private MongoClient client;
   private DB db;
   private DBCollection collection;
 
 	private OutputCollector collector;
 
-  public MongoBolt(String url, String dbName, String collectionName, String[] _fields, String _type) {
+  public MongoBolt(String _user, String _password, String url, String dbName, String collectionName, String[] _fields){
+    this.user = _user;
+    this.password = _password;
     this.url = url;
     this.dbName = dbName;
     this.collectionName = collectionName;
     this.fields = _fields;
-    this.type = _type;
   }
   
-	public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
+	public void prepare(Map stormConf, TopologyContext context, OutputCollector _collector) {
     try{ 
-      client = new MongoClient(url);
+      if (user != null && password != null){
+        MongoCredential cred = MongoCredential.createMongoCRCredential(user, dbName, password.toCharArray());
+        client = new MongoClient(new ServerAddress(url), java.util.Arrays.asList(cred));
+      }
+      else client = new MongoClient(new ServerAddress(url));
       db = client.getDB(dbName);
       collection = db.getCollection(collectionName);
     }catch (UnknownHostException e){ e.printStackTrace(); System.exit(-1); }
+    collector = _collector;
 	}
 
 	public void execute(Tuple tuple){
     //New incoming parsed record, increment count of this request
     BasicDBObject search = new BasicDBObject();
-    if (fields == null) fields = tuple.getFields();
-    for (String field: fields) search.append(field, tuple.getStringByField(field));
+    if (fields != null) for (String field: fields)
+        search.append(field, tuple.getStringByField(field));
+    else for (String field: tuple.getFields())
+        search.append(field, tuple.getStringByField(field));
 
     BasicDBObject updated = new BasicDBObject();
-    if (type == "custom")
-      updated.put("$inc", new BasicDBObject().append("hits", 1).append("bytes", tuple.getIntegerByField("bytes")));
-    collection.update(search, updated, true, false);
+    //TODO: make this bolt generic by passing JSON commands
+      updated.put("$inc", new BasicDBObject().append("hits", 1).append("bytes", Integer.parseInt(tuple.getStringByField("bytes"))));
+      collection.update(search, updated, true, false);
+    DBCursor cursor = collection.find(search);
+    while(cursor.hasNext()) System.out.println(cursor.next());
+
     collector.ack(tuple);
 	}
 
