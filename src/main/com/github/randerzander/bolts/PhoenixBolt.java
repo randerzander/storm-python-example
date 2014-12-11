@@ -23,7 +23,7 @@ public class PhoenixBolt implements IRichBolt {
   private Connection connection;
   private String table;
   private String[] fields;
-	
+  
   private OutputCollector collector;
 
   public PhoenixBolt(String _jdbcJar, String _jdbcURL, String _table, String[] _fields){
@@ -61,7 +61,7 @@ public class PhoenixBolt implements IRichBolt {
   }
 
   @Override
-  public void declareOutputFields(OutputFieldsDeclarer declarer) { declarer.declare(new Fields()); }
+  public void declareOutputFields(OutputFieldsDeclarer declarer){}
   @Override
   public Map<String, Object> getComponentConfiguration() { return null; }
   @Override

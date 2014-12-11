@@ -14,7 +14,7 @@ public class DateTimeFileNameFormat implements FileNameFormat {
     private String path = "/storm";
     private String prefix = "";
     private String extension = ".txt";
-    private Format format = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
+    private Format format = new SimpleDateFormat("yyyy-MM-dd-HH-mm");
 
     public DateTimeFileNameFormat withPrefix(String prefix){
       this.prefix = prefix;
@@ -41,7 +41,7 @@ public class DateTimeFileNameFormat implements FileNameFormat {
 
     @Override
     public String getName(long rotation, long timeStamp) {
-      return this.prefix + this.componentId + "-" + this.taskId +  "-" + rotation + "-" + convertTime(timeStamp) + this.extension;
+      return this.prefix + convertTime(timeStamp) + "-" + rotation + this.extension;
     }
 
     public String getPath(){ return this.path; }
