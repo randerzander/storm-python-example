@@ -10,24 +10,21 @@
   
   <repositories>
     <repository>
-      <id>github-releases</id>
-      <url>http://oss.sonatype.org/content/repositories/github-releases/</url>
-    </repository>
-    <repository>
-      <id>clojars.org</id>
-      <url>http://clojars.org/repo</url>
-    </repository>
-    <repository>
       <id>hortonworks</id>
       <url>http://repo.hortonworks.com/content/repositories/releases/</url>
     </repository>   
   </repositories>
 
+  <properties>
+    <storm.version>0.9.3.2.2.0.0-2041</storm.version>
+    <kafka.version>0.8.1.2.2.0.0-2041</kafka.version>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>org.apache.storm</groupId>
       <artifactId>storm-core</artifactId>
-      <version>0.9.1.2.1.4.0-632</version>
+      <version>${storm.version}</version>
       <scope>provided</scope>
       <exclusions>
         <exclusion>
@@ -42,47 +39,37 @@
     </dependency>
 
     <dependency>
-      <groupId>org.apache.kafka</groupId>
-      <artifactId>kafka_2.9.2</artifactId>
-      <version>0.8.1.1</version>
-      <scope>compile</scope>
-      <exclusions>
-        <exclusion>
-          <artifactId>jmxri</artifactId>
-          <groupId>com.sun.jmx</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>jms</artifactId>
-          <groupId>javax.jms</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>jmxtools</artifactId>
-          <groupId>com.sun.jdmk</groupId>
-        </exclusion>
-      </exclusions>
+			<groupId>org.apache.kafka</groupId>
+			<artifactId>kafka_2.8.0</artifactId>
+			<version>${kafka.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>log4j-over-slf4j</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-log4j12</artifactId>
+				</exclusion>
+			</exclusions>
     </dependency>
             
     <dependency>
       <groupId>org.apache.storm</groupId>
       <artifactId>storm-kafka</artifactId>
-      <!-- <version>0.9.3.2.2.0.0-2041</version> -->
-      <version>0.9.1.2.1.4.0-632</version>
+      <version>${storm.version}</version>
     </dependency>
      <dependency>
       <groupId>org.apache.storm</groupId>
       <artifactId>storm-hdfs</artifactId>
-      <version>0.9.1.2.1.4.0-632</version>
+      <version>${storm.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.storm</groupId>
       <artifactId>storm-hbase</artifactId>
-      <version>0.9.1.2.1.4.0-632</version>
+      <version>${storm.version}</version>
     </dependency>
-    <dependency>
-      <groupId>org.mongodb</groupId>
-      <artifactId>mongo-java-driver</artifactId>
-      <version>2.12.4</version>
-    </dependency>
+
   </dependencies>
   <build>
     <sourceDirectory>src/main</sourceDirectory>

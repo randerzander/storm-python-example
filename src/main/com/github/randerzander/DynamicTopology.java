@@ -10,8 +10,8 @@ import backtype.storm.topology.TopologyBuilder;
 
 import java.io.FileReader;
 import java.util.Properties;
+import java.util.Map;
 import java.util.HashMap;
-import java.util.Arrays;
 
 public class DynamicTopology {
   public static void main(String[] args) throws Exception {
@@ -22,23 +22,34 @@ public class DynamicTopology {
     TopologyBuilder builder = new TopologyBuilder();
     Config conf = new Config();
     conf.setNumWorkers(Integer.parseInt(props.get("numWorkers")));
-
-    //Set up spouts and bolts
-    for(String spoutName: props.get("spouts").split(",")){
-      System.out.println("Setting up Spout: " + spoutName);
-      Spouts.getDeclarer(props, spoutName, builder);
+    
+    //Setup spouts
+    for(Map.Entry<String, String> spout: enumerateComponents(props, "spoutType").entrySet()){
+      System.out.println("Setting up Spout: " + spout.getKey());
+      Spouts.getDeclarer(props, spout.getKey(), builder);
     }
-    for(String boltName: props.get("bolts").split(",")){
-      System.out.println("Setting up Bolt: " + boltName);
-      String prefix = "bolts."+boltName+".";
+
+    //Setup bolts
+    for(Map.Entry<String, String> bolt: enumerateComponents(props, "boltType").entrySet()){
+      System.out.println("Setting up Bolt: " + bolt.getKey());
+      String prefix = bolt.getKey()+ ".";
       if (props.get(prefix+"grouping") == null || props.get(prefix+"grouping").equals("shuffle")){
-        Bolts.getDeclarer(props, boltName, builder).shuffleGrouping(props.get(prefix+"source"));
+        Bolts.getDeclarer(props, bolt.getKey(), builder).shuffleGrouping(props.get(prefix+"source"));
       }
       else{ System.err.println("Non shufflegroupings not supported."); System.exit(-1);  }
     }
-
+    
     //Submit topology
     StormSubmitter.submitTopology(topologyName, conf, builder.createTopology());
+  }
+
+  public static HashMap<String, String> enumerateComponents(HashMap<String, String> props, String componentType){
+    HashMap<String, String> componentList = new HashMap<String, String>();
+    for(Map.Entry<String, String> entry: props.entrySet()){
+      String[] tokens = entry.getKey().split("\\.");
+      if (tokens[tokens.length-1].equals(componentType)) componentList.put(tokens[0], entry.getValue());
+    }
+    return componentList;
   }
 
   public static HashMap<String, String> getPropertiesMap(String file){
