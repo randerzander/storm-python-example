@@ -1,7 +1,0 @@
-<!--Tue Dec  9 00:35:21 2014-->
-<configuration>
-<property>
-  <name>hbase.defaults.for.version.skip</name>
-  <value>true</value>
-</property>
-</configuration>

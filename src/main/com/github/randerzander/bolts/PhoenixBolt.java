@@ -7,6 +7,8 @@ import java.net.URLClassLoader;
 import java.sql.Connection;
 import java.sql.Driver;
 import java.sql.ResultSet;
+import java.sql.Statement;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
@@ -21,16 +23,11 @@ public class PhoenixBolt implements IRichBolt {
   private String jdbcURL;
   private String jdbcJar;
   private Connection connection;
-  private String table;
-  private String[] fields;
-  
   private OutputCollector collector;
 
-  public PhoenixBolt(String _jdbcJar, String _jdbcURL, String _table, String[] _fields){
+  public PhoenixBolt(String _jdbcJar, String _jdbcURL){
     jdbcJar = _jdbcJar;
     jdbcURL = _jdbcURL;
-    table = _table;
-    fields = _fields;
   }
 
   @Override
@@ -39,24 +36,17 @@ public class PhoenixBolt implements IRichBolt {
     try{
       URLClassLoader loader = new URLClassLoader(new URL[]{new URL(jdbcJar)}, null);
       Driver driver = (Driver) loader.loadClass("org.apache.phoenix.jdbc.PhoenixDriver").newInstance();
-      Connection connection = driver.connect(jdbcURL, new Properties());
-    }catch(Exception e){ e.printStackTrace(); System.exit(-1); }
+      connection = driver.connect(jdbcURL, new Properties());
+    }catch(Exception e){ e.printStackTrace(); throw new RuntimeException(e); }
   }
 
   @Override
-  public void execute(Tuple tuple) {
+  public void execute(Tuple tuple){
     try{
-      String values = "(";
-      String statement = "upsert into " + table + "(";
-      //Use fields if specified, else use whatever specified by upstream bolt
-      if (fields != null) for(String field: fields) statement += "," + field;
-      for (String field : tuple.getFields()){ 
-        if (fields != null) statement += field + ",";
-        values += tuple.getStringByField(field) + ",";
-      }
-      statement = statement.substring(0, statement.length() - 1) + ") values (" + values.substring(0, values.length()-1) + ")";
-      connection.createStatement().executeQuery(statement);
-    }catch(Exception e){ e.printStackTrace(); throw new RuntimeException(e); }
+      connection.createStatement().executeUpdate(tuple.getStringByField("statement"));
+      connection.commit();
+    }
+    catch(Exception e){ e.printStackTrace(); throw new RuntimeException(e); }
     collector.ack(tuple);
   }
 

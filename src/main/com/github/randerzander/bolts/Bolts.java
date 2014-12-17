@@ -46,10 +46,13 @@ public class Bolts {
 
   public static BoltDeclarer getHDFSBolt(HashMap<String, String> props, String boltName, TopologyBuilder builder){
     String prefix = boltName + ".";
+    String delim = (props.get(prefix+"delim") != null) ? props.get(prefix+"delim") : "\t";
+    String outDir = (props.get(prefix+"outDir") != null) ? props.get(prefix+"outDir") : "HDFSBolt_output/";
+    int rotationSize = (props.get(prefix+"rotationSize") != null) ? Integer.parseInt(props.get(prefix+"rotationSize")) : 256;
     HdfsBolt bolt = new HdfsBolt().withFsUrl(props.get(prefix+"withFsUrl"))
-      .withFileNameFormat(new DateTimeFileNameFormat().withPath(props.get(prefix+"outputDir")))
-      .withRecordFormat(new DelimitedRecordFormat().withFieldDelimiter("\t"))
-      .withRotationPolicy(new FileSizeRotationPolicy(256, Units.MB))
+      .withFileNameFormat(new DateTimeFileNameFormat().withPath(outDir))
+      .withRecordFormat(new DelimitedRecordFormat().withFieldDelimiter(delim))
+      .withRotationPolicy(new FileSizeRotationPolicy(rotationSize, Units.MB))
       .withSyncPolicy(new CountSyncPolicy(Integer.parseInt(props.get(prefix+"countSyncPolicy"))));
     return builder.setBolt(boltName, bolt, Utils.getParallelism(props, boltName));
   }
@@ -62,10 +65,7 @@ public class Bolts {
   
   public static BoltDeclarer getPhoenixBolt(HashMap<String, String> props, String boltName, TopologyBuilder builder){
     String prefix = boltName + ".";
-    return builder.setBolt(boltName, new PhoenixBolt(
-      props.get(prefix+"jdbcJar"), props.get(prefix+"jdbcURL"), props.get(prefix+"table"), getFields(props, boltName)),
-      Utils.getParallelism(props, boltName)
-    );
+    return builder.setBolt(boltName, new PhoenixBolt(props.get(prefix+"jdbcJar"), props.get(prefix+"jdbcURL")), Utils.getParallelism(props, boltName));
   }
 
   public static String[] getFields(HashMap<String, String> props, String boltName){
