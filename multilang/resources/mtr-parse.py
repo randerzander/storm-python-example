@@ -2,13 +2,6 @@
 
 import storm, sys, json, datetime
 
-#TODO remove once PhoenixBolt responsible for building queries
-def prep(values):
-  for idx, val in enumerate(values):
-    if type(val) is str or type(val) is unicode: values[idx] = '\''+val+'\''
-    elif type(val) is int or type(val) is float: values[idx] = str(val)
-  return values
-
 class ExampleBolt(storm.BasicBolt):
   #def initialize(self, stormconf, context):
     # Can define init steps here as needed
@@ -19,7 +12,7 @@ class ExampleBolt(storm.BasicBolt):
 
     src_ip = report['Client']['IP']
     target_ip = report['Command'][5]
-    local_time = int(report['StartTime'])
+    local_time = report['StartTime']
     # Parse output by newlines, get last line
     last_line = report['Output'].split('\x00')[-2]
     if '???' in last_line: return # Don't report on an incomplete route
@@ -29,9 +22,6 @@ class ExampleBolt(storm.BasicBolt):
     stddev = float(tokens[-1])
     avg = float(tokens[5])
     
-    values = prep([src_ip, target_ip, local_time, loss, avg, stddev])
-    #TODO make PhoenixBolt built upsert statements
-    query = 'upsert into mtr.mtr values (' + ','.join(values) + ')'
-    storm.emit([query])
+    storm.emit([src_ip, target_ip, local_time, loss, avg, stddev])
 
 ExampleBolt().run()

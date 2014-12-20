@@ -65,7 +65,16 @@ public class Bolts {
   
   public static BoltDeclarer getPhoenixBolt(HashMap<String, String> props, String boltName, TopologyBuilder builder){
     String prefix = boltName + ".";
-    return builder.setBolt(boltName, new PhoenixBolt(props.get(prefix+"jdbcJar"), props.get(prefix+"jdbcURL")), Utils.getParallelism(props, boltName));
+    PhoenixBolt bolt = new PhoenixBolt(props.get(prefix+"jdbcJar"), props.get(prefix+"jdbcURL"));
+    for (String table: props.get(prefix+"tables").split(",")){
+      String[] fields = (props.get(prefix+table+".fields") != null) ?
+        props.get(prefix+table+".fields").split(",") :
+        null;
+      bolt.withTableOutput(table, props.get(prefix+table+".source"), fields);
+      bolt.withCountSynchPolicy((props.get(prefix+"countSynchPolicy") != null) ? Integer.parseInt(props.get(prefix+"countSynchPolicy")) : 10000);
+      bolt.withTimeSynchPolicy((props.get(prefix+"timeSynchPolicy") != null) ? Integer.parseInt(props.get(prefix+"timeSynchPolicy")) : 5);
+    }
+    return builder.setBolt(boltName, bolt, Utils.getParallelism(props, boltName));
   }
 
   public static String[] getFields(HashMap<String, String> props, String boltName){

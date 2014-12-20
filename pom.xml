@@ -70,6 +70,12 @@
       <version>${storm.version}</version>
     </dependency>
 
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>3.3.2</version>
+    </dependency>
+
   </dependencies>
   <build>
     <sourceDirectory>src/main</sourceDirectory>

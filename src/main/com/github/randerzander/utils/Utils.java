@@ -28,7 +28,7 @@ public class Utils{
         System.out.print(".");
         try{ Thread.sleep(1000); } catch(Exception e){}
       }
-      System.out.println("Killed.");
+      System.out.println("killed.");
     }
   }
 

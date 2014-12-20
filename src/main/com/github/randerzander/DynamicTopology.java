@@ -7,6 +7,7 @@ import com.github.randerzander.Utils;
 import backtype.storm.Config;
 import backtype.storm.StormSubmitter;
 import backtype.storm.topology.TopologyBuilder;
+import backtype.storm.LocalCluster;
 
 import java.io.FileReader;
 import java.util.Properties;
@@ -17,7 +18,7 @@ public class DynamicTopology {
   public static void main(String[] args) throws Exception {
     HashMap<String, String> props = getPropertiesMap(args[0]);
     String topologyName = props.get("topologyName");
-    if (props.get("killIfRunning").equals("true")) Utils.killTopology(topologyName);
+    if (Utils.checkProp(props, "killIfRunning", "true")) Utils.killTopology(topologyName);
 
     TopologyBuilder builder = new TopologyBuilder();
     Config conf = new Config();
@@ -40,7 +41,8 @@ public class DynamicTopology {
     }
     
     //Submit topology
-    StormSubmitter.submitTopology(topologyName, conf, builder.createTopology());
+    if (Utils.checkProp(props, "localMode", "true")) new LocalCluster().submitTopology(topologyName, conf, builder.createTopology());
+    else StormSubmitter.submitTopologyWithProgressBar(topologyName, conf, builder.createTopology());
   }
 
   public static HashMap<String, String> enumerateComponents(HashMap<String, String> props, String componentType){
