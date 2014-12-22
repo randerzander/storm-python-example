@@ -8,6 +8,8 @@ import java.sql.Connection;
 import java.sql.Driver;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -23,6 +25,9 @@ import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.Config;
+
+//TODO: uncomment once phoenix jars available
+//import org.apache.phoenix.jdbc;
 
 public class PhoenixBolt implements IRichBolt {
   private String jdbcURL;
@@ -65,7 +70,8 @@ public class PhoenixBolt implements IRichBolt {
 
     public StreamHandler(Tuple tuple){
       String source = tuple.getSourceComponent();
-      String table = sourcesToTables.get(source);
+      String table = sourcesToTables.get(source).toUpperCase();
+      String catalogue = (table.contains(".")) ? table.split("\\.")[0] : null;
       Fields tupleFields = tuple.getFields();
 
       //Look up fields specified in constructor, else use every field in tuple
@@ -74,14 +80,22 @@ public class PhoenixBolt implements IRichBolt {
           tupleFields.toList().toArray(new String[tupleFields.size()]);
       String[] qs = new String[fields.length];
       tupleFieldTypes = new HashMap<Integer, String>();
-      //Determine type of each field
+      //Determine type of each field -- build mapping of field types against first tuple
       for(int i = 0; i < fields.length; i++){
         tupleFieldTypes.put(i, getType(tuple.getValueByField(fields[i])));
         qs[i] = "?";
       }
       try{
-        //TODO: Check table exists and, if specified in constructor, create if not exists
         statement = connection.prepareStatement("upsert into " + table + " (" + StringUtils.join(fields, ",") + ") values (" + StringUtils.join(qs, ",") + ")");
+        /* TODO: create table if not exists
+        table = (table.contains(".")) ? table.split("\\.")[1] : table;
+        DatabaseMetaData metaData = connection.getMetaData();
+        ResultSet results = metaData.getTables(null, null, null, new String[]{"TABLE"});
+        boolean tableFound = false;
+        System.err.println(catalogue + " , " + table);
+        while (results.next() && !tableFound) if (results.getString("TABLE_CAT").equals(catalogue) && results.getString("TABLE_NAME").equals(table)) tableFound = true;
+        if (!tableFound) throw new RuntimeException(table + " does not exist!");
+        */
       }catch(SQLException e){ e.printStackTrace(); throw new RuntimeException(e); }
     }
 
@@ -96,11 +110,12 @@ public class PhoenixBolt implements IRichBolt {
 
     public void addBatch(Tuple tuple){
       try{
+        //Uses field mapping built during construction of this StreamHandler
+        //TODO: check if this is actually faster than applying instance of to every field in every tuple
         for (Map.Entry<Integer, String> entry: tupleFieldTypes.entrySet()){
           Integer fieldIndex = entry.getKey(); Integer columnIndex = fieldIndex + 1;
           if (entry.getValue().equals("String")) statement.setString(columnIndex, tuple.getString(fieldIndex));
           else if (entry.getValue().equals("Integer")) statement.setInt(columnIndex, tuple.getInteger(fieldIndex));
-          //TODO resolve issue with Phoenix type mismatches for Long?
           else if (entry.getValue().equals("Long")) statement.setLong(columnIndex, tuple.getLong(fieldIndex));
           else if (entry.getValue().equals("Double")) statement.setDouble(columnIndex, tuple.getDouble(fieldIndex));
           else if (entry.getValue().equals("Float")) statement.setFloat(columnIndex, tuple.getFloat(fieldIndex));
@@ -122,6 +137,7 @@ public class PhoenixBolt implements IRichBolt {
     this.collector = collector;
     this.handlers = new HashMap<String, StreamHandler>();
     try{
+      //TODO: check whether this JDBC driver load method still needed vs adding a dependency
       URLClassLoader loader = new URLClassLoader(new URL[]{new URL(jdbcJar)}, null);
       Driver driver = (Driver) loader.loadClass("org.apache.phoenix.jdbc.PhoenixDriver").newInstance();
       connection = driver.connect(jdbcURL, new Properties());
