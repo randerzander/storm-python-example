@@ -65,7 +65,7 @@ public class Bolts {
   
   public static BoltDeclarer getPhoenixBolt(HashMap<String, String> props, String boltName, TopologyBuilder builder){
     String prefix = boltName + ".";
-    PhoenixBolt bolt = new PhoenixBolt(props.get(prefix+"jdbcJar"), props.get(prefix+"jdbcURL"));
+    PhoenixBolt bolt = new PhoenixBolt(props.get(prefix+"jdbcURL"));
     for (String table: props.get(prefix+"tables").split(",")){
       String[] fields = (props.get(prefix+table+".fields") != null) ?
         props.get(prefix+table+".fields").split(",") :

@@ -2,10 +2,8 @@ package com.github.randerzander.bolts;
 
 import com.github.randerzander.Utils;
 
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.sql.Connection;
-import java.sql.Driver;
+import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.DatabaseMetaData;
@@ -26,12 +24,10 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.Config;
 
-//TODO: uncomment once phoenix jars available
-//import org.apache.phoenix.jdbc;
+import org.apache.phoenix.jdbc.PhoenixDriver;
 
 public class PhoenixBolt implements IRichBolt {
   private String jdbcURL;
-  private String jdbcJar;
   private Connection connection;
   private OutputCollector collector;
   private HashMap<String, StreamHandler> handlers;
@@ -41,8 +37,7 @@ public class PhoenixBolt implements IRichBolt {
   private int countSynchPolicy = -1;
   private int counter = 0;
 
-  public PhoenixBolt(String jdbcJar, String jdbcURL){
-    this.jdbcJar = jdbcJar;
+  public PhoenixBolt(String jdbcURL){
     this.jdbcURL = jdbcURL;
     sourcesToTables = new HashMap<String, String>();
     fieldLists = new HashMap<String, String[]>();
@@ -136,12 +131,8 @@ public class PhoenixBolt implements IRichBolt {
   public void prepare(Map stormConf, TopologyContext context, OutputCollector collector){
     this.collector = collector;
     this.handlers = new HashMap<String, StreamHandler>();
-    try{
-      //TODO: check whether this JDBC driver load method still needed vs adding a dependency
-      URLClassLoader loader = new URLClassLoader(new URL[]{new URL(jdbcJar)}, null);
-      Driver driver = (Driver) loader.loadClass("org.apache.phoenix.jdbc.PhoenixDriver").newInstance();
-      connection = driver.connect(jdbcURL, new Properties());
-    }catch(Exception e){ e.printStackTrace(); throw new RuntimeException(e); }
+    try{ connection = DriverManager.getConnection(jdbcURL, new Properties()); }
+    catch(Exception e){ e.printStackTrace(); throw new RuntimeException(e); }
   }
 
   @Override
